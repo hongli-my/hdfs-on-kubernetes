@@ -1,0 +1,55 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: namenode
+  labels:
+    k8s-app: namenode
+spec:
+  serviceName: namenode-headless
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        k8s-app: namenode
+    spec:
+      containers:
+      - image: 10.2.0.209:5000/test/hdfs:2.6.5
+        name: namenode
+        command: ["/run.sh"]
+        args:
+        - "namenode"
+        resources:
+          limits:
+            cpu: 500m
+        ports:
+        - containerPort: 50070
+          name: http-port
+        - containerPort: 9000
+          name: rpc-port
+        env:
+        - name: "JNODES_IPS"
+          value: "journalnode-0.journalnode-headless.default.svc.cluster.local:8485;journalnode-1.journalnode-headless.default.svc.cluster.local:8485;journalnode-2.journalnode-headless.default.svc.cluster.local:8485"
+        - name: "ZK_IP"
+          value: "10.2.0.209:2181"
+        - name: "NAMENODE1"
+          value: "namenode-0.namenode-headless.default.svc.cluster.local"
+        - name: "NAMENODE2"
+          value: "namenode-1.namenode-headless.default.svc.cluster.local"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: namenode-headless
+  labels:
+    k8s-app: namenode-headless
+spec:
+  ports:
+  - port: 50070
+    protocol: TCP
+    name: http-port
+  - port: 9000
+    protocol: TCP
+    name: rpc-port
+  clusterIP: None
+  selector:
+    k8s-app: namenode

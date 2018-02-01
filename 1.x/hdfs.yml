@@ -1,0 +1,47 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hdfs
+  labels:
+    name: hdfs
+spec:
+  ports:
+  - port: 48000
+    targetPort: 49000
+    protocol: TCP
+  selector:
+    app: hdfs
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: hdfs
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: hdfs
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+      - name: hdfs
+        image: 10.2.0.209:5000/test/hdfs:1.2.1.1
+        command: ["/run.sh"]
+        args:
+        - "namenode"
+        #resources:
+        #  limits:
+        #    cpu: 0.5
+        #    memory: 64Mi
+      #   volumeMounts:
+      #   - mountPath: /opt/hdfs_name
+      #     readOnly: false
+      #     name: nginx-data
+      # volumes:
+      # - name: nginx-data
+      #   nfs:
+      #     server: 10.2.1.227
+      #     path: "/data"

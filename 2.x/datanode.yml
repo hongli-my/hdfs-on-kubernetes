@@ -1,0 +1,36 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: datanode
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        k8s-app: datanode
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: k8s-app
+                operator: In
+                values:
+                - datanode
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - image: 10.2.0.209:5000/test/hdfs:2.6.5
+        name: datanode
+        command: ["/run.sh"]
+        args:
+        - "datanode"
+        env:
+        - name: "JNODES_IPS"
+          value: "journalnode-0.journalnode-headless.default.svc.cluster.local:8485;journalnode-1.journalnode-headless.default.svc.cluster.local:8485;journalnode-2.journalnode-headless.default.svc.cluster.local:8485"
+        - name: "ZK_IP"
+          value: "10.2.0.209:2181"
+        - name: "NAMENODE1"
+          value: "namenode-0.namenode-headless.default.svc.cluster.local"
+        - name: "NAMENODE2"
+          value: "namenode-1.namenode-headless.default.svc.cluster.local"

@@ -1,0 +1,55 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: journalnode
+  labels:
+    k8s-app: journalnode
+spec:
+  serviceName: journalnode-headless
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        k8s-app: journalnode
+    spec:
+      containers:
+      - image: 10.2.0.209:5000/test/hdfs:2.6.5
+        name: journalnode
+        command: ["/run.sh"]
+        args:
+        - "journalnode"
+        resources:
+          limits:
+            cpu: 100m
+        ports:
+        - containerPort: 8480
+          name: http-port
+        - containerPort: 8485
+          name: rpc-port
+        env:
+        - name: "JNODES_IPS"
+          value: "journalnode-0.journalnode-headless.default.svc.cluster.local:8485;journalnode-1.journalnode-headless.default.svc.cluster.local:8485;journalnode-2.journalnode-headless.default.svc.cluster.local:8485"
+        - name: "ZK_IP"
+          value: "10.2.0.209:2181"
+        - name: "NAMENODE1"
+          value: "namenode-0.namenode-headless.default.svc.cluster.local"
+        - name: "NAMENODE2"
+          value: "namenode-1.namenode-headless.default.svc.cluster.local"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: journalnode-headless
+  labels:
+    k8s-app: journalnode-headless
+spec:
+  ports:
+  - port: 8480
+    protocol: TCP
+    name: http-port
+  - port: 8485
+    protocol: TCP
+    name: rpc-port
+  clusterIP: None
+  selector:
+    k8s-app: journalnode
