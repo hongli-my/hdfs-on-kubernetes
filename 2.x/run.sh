@@ -116,15 +116,52 @@ cat >$HADOOP_PRFIX/etc/hadoop/hdfs-site.xml <<EOF
         <name>dfs.journalnode.rpc-address</name> 
         <value>0.0.0.0:8485</value> 
     </property>
+    <property>
+        <name>dfs.namenode.datanode.registration.ip-hostname-check</name>
+        <value>false</value>
+    </property>
 </configuration>
 EOF
 
+function check_sync(){
+    count=1
+    while true
+    do
+        if [ $count -gt 5 ];then
+            echo "nc -zv $1 $2 fail"
+            exit 1
+        fi
+        nc -zv  $1 $2
+        if [ $? -eq 0 ];then
+            break
+        fi
+        count=$(($count+1))
+        sleep 2
+    done
+    $HADOOP_PRFIX/bin/hdfs namenode -bootstrapStandby
+}
+
+function check_formt(){
+    count=1
+    while true
+    do
+        if [ $count -gt 5 ];then
+            echo "fomat namenode tmp dir fail"
+            exit 1
+        fi
+        if [ -d "/opt/hdfs/tmp/dfs/name/current" ];then
+            break
+        fi
+        $HADOOP_PRFIX/bin/hdfs namenode -format
+        count=$(($count+1))
+        sleep 2
+    done
+}
+
 # start JournalNode
 if [ "$1"x = "journalnode"x ];then
-    echo $HADOOP_PRFIX/sbin/hadoop-daemon.sh start journalnode
     $HADOOP_PRFIX/sbin/hadoop-daemon.sh start journalnode
 elif [ "$1"x = "datanode"x ];then
-    echo $HADOOP_PRFIX/sbin/hadoop-daemon.sh start datanode
     $HADOOP_PRFIX/sbin/hadoop-daemon.sh start datanode
 elif [ "$1"x = "namenode"x ];then
     # format zkfc on 01
@@ -132,11 +169,13 @@ elif [ "$1"x = "namenode"x ];then
         /check_path $ZK_IP /hadoop-ha/$HDFS_NAMESERVICE
         if [ $? -eq 0 ];then
             $HADOOP_PRFIX/bin/hdfs zkfc -formatZK
-            $HADOOP_PRFIX/bin/hdfs namenode -format
+            check_formt
+        else
+            check_sync $NAMENODE2 9000
         fi
     fi
     if [ $ORD -eq 1 ];then
-        $HADOOP_PRFIX/bin/hdfs namenode -bootstrapStandby
+        check_sync $NAMENODE1 9000
     fi
     $HADOOP_PRFIX/sbin/hadoop-daemon.sh start zkfc
     $HADOOP_PRFIX/sbin/hadoop-daemon.sh start namenode
