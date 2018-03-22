@@ -50,8 +50,36 @@ data:
   yarn-site.xml: |
     <configuration>
         <property>
-        　　<name>yarn.resourcemanager.resource-tracker.address</name>
-        　　<value>resourcemanager-0.resourcemanager-headless.default.svc.cluster.local:8031</value>
+            <name>yarn.resourcemanager.ha.enabled</name>
+            <value>true</value>
+        </property>
+        <property>
+            <name>yarn.resourcemanager.cluster-id</name>
+            <value>cluster1</value>
+        </property>
+        <property>
+            <name>yarn.resourcemanager.ha.rm-ids</name>
+            <value>rm1,rm2</value>
+        </property>
+        <property>
+            <name>yarn.resourcemanager.hostname.rm1</name>
+            <value>resourcemanager-0.resourcemanager-headless.default.svc.cluster.local</value>
+        </property>
+        <property>
+            <name>yarn.resourcemanager.hostname.rm2</name>
+            <value>resourcemanager-1.resourcemanager-headless.default.svc.cluster.local</value>
+        </property>
+        <property>
+            <name>yarn.resourcemanager.zk-address</name>
+            <value>zk-0.zk-hs.default.svc.cluster.local:2181,zk-1.zk-hs.default.svc.cluster.local:2181,zk-2.zk-hs.default.svc.cluster.local:2181</value>
+        </property>
+        <property>
+            <name>yarn.resourcemanager.ha.automatic-failover.zk-base-path</name>
+            <value>/yarn-leader-election</value>
+        </property>
+        <property>
+            <name>yarn.resourcemanager.ha.automatic-failover.enabled</name>
+            <value>true</value>
         </property>
         <property> 
             <name>yarn.nodemanager.aux-services</name> 
@@ -60,5 +88,13 @@ data:
         <property>
             <name>yarn.nodemanager.aux-services.mapreduce.shuffle.class</name> 
             <value>org.apache.hadoop.mapred.ShuffleHandler</value> 
+        </property>
+        <property>
+            <name>yarn.resourcemanager.resource-tracker.address.rm1</name>
+            <value>resourcemanager-0.resourcemanager-headless.default.svc.cluster.local:8031</value>
+        </property>
+        <property>
+           <name>yarn.resourcemanager.resource-tracker.address.rm2</name>
+            <value>resourcemanager-1.resourcemanager-headless.default.svc.cluster.local:8031</value>
         </property>
     </configuration>
