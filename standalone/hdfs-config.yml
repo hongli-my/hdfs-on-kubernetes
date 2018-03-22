@@ -1,0 +1,64 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: hdfs-cfg
+  namespace: default
+  labels:
+    app: hdfs-cfg
+data:
+  core-site.xml: |
+    <configuration>
+        <property>
+            <name>fs.defaultFS</name>
+            <value>hdfs://namenode.default.svc.cluster.local:9000/</value>
+        </property>
+        <property>
+            <name>hadoop.tmp.dir</name>
+            <value>/opt/hdfs/tmp</value>
+        </property>
+        <property>
+            <name>ha.zookeeper.quorum</name>
+            <value>zk-0.zk-hs.default.svc.cluster.local:2181,zk-1.zk-hs.default.svc.cluster.local:2181,zk-2.zk-hs.default.svc.cluster.local:2181</value>
+        </property>
+    </configuration>
+  hdfs-site.xml: |
+    <configuration>
+        <property>
+            <name>dfs.namenode.datanode.registration.ip-hostname-check</name>
+            <value>false</value>
+        </property>
+        <property>
+            <name>dfs.replication</name>
+            <value>3</value>
+        </property>
+        <property>
+            <name>dfs.datanode.data.dir</name>
+            <value>file:///opt/hdfs/data</value>
+        </property>
+        <property>
+            <name>dfs.replication</name>
+            <value>2</value>
+        </property>
+    </configuration>
+  mapred-site.xml: |
+    <configuration>
+        <property> 
+            <name>mapreduce.framework.name</name> 
+            <value>yarn</value> 
+        </property>
+    </configuration>
+  yarn-site.xml: |
+    <configuration>
+        <property>
+        　　<name>yarn.resourcemanager.resource-tracker.address</name>
+        　　<value>resourcemanager-0.resourcemanager-headless.default.svc.cluster.local:8031</value>
+        </property>
+        <property> 
+            <name>yarn.nodemanager.aux-services</name> 
+            <value>mapreduce_shuffle</value> 
+        </property>
+        <property>
+            <name>yarn.nodemanager.aux-services.mapreduce.shuffle.class</name> 
+            <value>org.apache.hadoop.mapred.ShuffleHandler</value> 
+        </property>
+    </configuration>

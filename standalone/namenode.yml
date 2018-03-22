@@ -1,11 +1,10 @@
 apiVersion: apps/v1beta1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: namenode
   labels:
     k8s-app: namenode
 spec:
-  serviceName: namenode-headless
   replicas: 1
   template:
     metadata:
@@ -24,11 +23,12 @@ spec:
               topologyKey: "kubernetes.io/hostname"
       hostNetwork: true
       containers:
-      - image: 10.2.1.227:5000/test/hdfs:2.6.5
+      - image: 10.2.1.227:5000/test/hdfs:standalone-2.6.5
         name: namenode
-        command: ["/run.sh"]
-        args:
-        - "namenode"
+        command:
+        - sh
+        - -c
+        -  /check_format.sh && $HADOOP_PRFIX/bin/hdfs --config $HADOOP_PRFIX/etc/hadoop namenode
         resources:
           limits:
             cpu: 500m
@@ -38,24 +38,31 @@ spec:
         - containerPort: 9000
           name: rpc-port
         env:
-        - name: "JNODES_IPS"
-          value: "journalnode-0.journalnode-headless.default.svc.cluster.local:8485;journalnode-1.journalnode-headless.default.svc.cluster.local:8485;journalnode-2.journalnode-headless.default.svc.cluster.local:8485"
-        - name: "ZK_IP"
-          value: "zk-0.zk-hs.default.svc.cluster.local:2181,zk-1.zk-hs.default.svc.cluster.local:2181,zk-2.zk-hs.default.svc.cluster.local:2181"
-        - name: "NAMENODE1"
-          value: "namenode-0.namenode-headless.default.svc.cluster.local"
-        - name: "NAMENODE2"
-          value: "namenode-1.namenode-headless.default.svc.cluster.local"
-        # if HA_ENABLE false, replicas must 1
-        - name: "HA_ENABLE"
-          value: "false"
+        - name: "HADOOP_PRFIX"
+          value: "/opt/hadoop-2.6.5"
+        - name: "HDFS_TMP_DIR"
+          value: "/opt/hdfs/tmp"
+        volumeMounts:
+        - name: hdfs-core-cfg
+          mountPath: /opt/hadoop-2.6.5/etc/hadoop/core-site.xml
+          subPath: core-site.xml
+        - name: hdfs-site-cfg
+          mountPath: /opt/hadoop-2.6.5/etc/hadoop/hdfs-site.xml
+          subPath: hdfs-site.xml
+      volumes:
+        - name: hdfs-core-cfg
+          configMap:
+            name: hdfs-cfg
+        - name: hdfs-site-cfg
+          configMap:
+            name: hdfs-cfg
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: namenode-headless
+  name: namenode
   labels:
-    k8s-app: namenode-headless
+    k8s-app: namenode
 spec:
   ports:
   - port: 50070

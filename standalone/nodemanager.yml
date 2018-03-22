@@ -1,0 +1,54 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: nodemanager
+spec:
+  template:
+    metadata:
+      labels:
+        k8s-app: nodemanager
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+    spec:
+      nodeSelector:
+        beta.kubernetes.io/hdfs-ds-ready: "true"
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - image: 10.2.1.227:5000/test/hdfs:standalone-2.6.5
+        name: nodemanager
+        command:
+        - sh
+        - -c
+        - $HADOOP_PRFIX/bin/yarn --config $HADOOP_PRFIX/etc/hadoop nodemanager
+        env:
+        - name: "HADOOP_PRFIX"
+          value: "/opt/hadoop-2.6.5"
+        volumeMounts:
+        - name: hdfs-core-cfg
+          mountPath: /opt/hadoop-2.6.5/etc/hadoop/core-site.xml
+          subPath: core-site.xml
+        - name: hdfs-site-cfg
+          mountPath: /opt/hadoop-2.6.5/etc/hadoop/hdfs-site.xml
+          subPath: hdfs-site.xml
+        - name: yarn-mapred-site
+          mountPath: /opt/hadoop-2.6.5/etc/hadoop/mapred-site.xml
+          subPath: mapred-site.xml
+        - name: yarn-yarn-site
+          mountPath: /opt/hadoop-2.6.5/etc/hadoop/yarn-site.xml
+          subPath: yarn-site.xml
+      volumes:
+        - name: hdfs-core-cfg
+          configMap:
+            name: hdfs-cfg
+        - name: hdfs-site-cfg
+          configMap:
+            name: hdfs-cfg
+        - name: yarn-mapred-site
+          configMap:
+            name: hdfs-cfg
+        - name: yarn-yarn-site
+          configMap:
+            name: hdfs-cfg

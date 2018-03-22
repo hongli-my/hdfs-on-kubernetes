@@ -1,0 +1,43 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: datanode
+spec:
+  template:
+    metadata:
+      labels:
+        k8s-app: datanode
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+    spec:
+      hostNetwork: true
+      nodeSelector:
+        beta.kubernetes.io/hdfs-ds-ready: "true"
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - image: 10.2.1.227:5000/test/hdfs:standalone-2.6.5
+        name: datanode
+        command:
+        - sh
+        - -c
+        - $HADOOP_PRFIX/bin/hdfs --config $HADOOP_PRFIX/etc/hadoop datanode
+        env:
+        - name: "HADOOP_PRFIX"
+          value: "/opt/hadoop-2.6.5"
+        volumeMounts:
+        - name: hdfs-core-cfg
+          mountPath: /opt/hadoop-2.6.5/etc/hadoop/core-site.xml
+          subPath: core-site.xml
+        - name: hdfs-site-cfg
+          mountPath: /opt/hadoop-2.6.5/etc/hadoop/hdfs-site.xml
+          subPath: hdfs-site.xml
+      volumes:
+        - name: hdfs-core-cfg
+          configMap:
+            name: hdfs-cfg
+        - name: hdfs-site-cfg
+          configMap:
+            name: hdfs-cfg

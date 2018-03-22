@@ -1,0 +1,96 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: resourcemanager
+  labels:
+    k8s-app: resourcemanager
+spec:
+  serviceName: resourcemanager-headless
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        k8s-app: resourcemanager
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: "k8s-app"
+                    operator: In
+                    values:
+                    - resourcemanager
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+      - image: 10.2.1.227:5000/test/hdfs:standalone-2.6.5
+        name: resourcemanager
+        command:
+        - sh
+        - -c
+        - $HADOOP_PRFIX/bin/yarn --config $HADOOP_PRFIX/etc/hadoop resourcemanager
+        resources:
+          limits:
+            cpu: 500m
+        env:
+        - name: "HADOOP_PRFIX"
+          value: "/opt/hadoop-2.6.5"
+        - name: "HDFS_TMP_DIR"
+          value: "/opt/hdfs/tmp"
+        volumeMounts:
+        - name: hdfs-core-cfg
+          mountPath: /opt/hadoop-2.6.5/etc/hadoop/core-site.xml
+          subPath: core-site.xml
+        - name: hdfs-site-cfg
+          mountPath: /opt/hadoop-2.6.5/etc/hadoop/hdfs-site.xml
+          subPath: hdfs-site.xml
+        - name: yarn-mapred-site
+          mountPath: /opt/hadoop-2.6.5/etc/hadoop/mapred-site.xml
+          subPath: mapred-site.xml
+        - name: yarn-yarn-site
+          mountPath: /opt/hadoop-2.6.5/etc/hadoop/yarn-site.xml
+          subPath: yarn-site.xml
+      volumes:
+        - name: hdfs-core-cfg
+          configMap:
+            name: hdfs-cfg
+        - name: hdfs-site-cfg
+          configMap:
+            name: hdfs-cfg
+        - name: yarn-mapred-site
+          configMap:
+            name: hdfs-cfg
+        - name: yarn-yarn-site
+          configMap:
+            name: hdfs-cfg
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: resourcemanager-headless
+  labels:
+    k8s-app: resourcemanager-headless
+spec:
+  ports:
+  - port: 8031
+    protocol: TCP
+    targetPort: 8031
+  clusterIP: None
+  selector:
+    k8s-app: resourcemanager
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: resourcemanager-ui
+  labels:
+    k8s-app: resourcemanager-ui
+spec:
+  ports:
+  - port: 8088
+    protocol: TCP
+    targetPort: 8088
+    nodePort: 30006
+  type: NodePort
+  selector:
+    k8s-app: resourcemanager

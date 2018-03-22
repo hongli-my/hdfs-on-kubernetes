@@ -8,6 +8,7 @@ HDFS_NAMESERVICE=${HDFS_NAMESERVICE:-"cluster1"}
 NAMENODE1=${NAMENODE1:-"hdfs-0.hdfs-headless.default.svc.cluster.local"}
 NAMENODE2=${NAMENODE2:-"hdfs-1.hdfs-headless.default.svc.cluster.local"}
 JNODES_IPS=${JNODES_IPS:-"datanode01:8485;datanode02:8485;datanode03:8485"}
+HA_ENABLE=${HA_ENABLE:="false"}
 
 HOST=`hostname -s`
 chown -R root:root $HADOOP_PRFIX
@@ -18,7 +19,7 @@ if [[ $HOST =~ (.*)-([0-9]+)$ ]]; then
     ORD=${BASH_REMATCH[2]}
 else
     echo "Failed to extract ordinal from hostname $HOST"
-    if [ "$1"x = "namenode"x ];then
+    if [ "$1"x = "namenode"x  -a "$HA_ENABLE" == true ];then
         exit 1
     fi
 fi
@@ -63,14 +64,6 @@ cat >$HADOOP_PRFIX/etc/hadoop/hdfs-site.xml <<EOF
     <property>
         <name>dfs.namenode.http-address.$HDFS_NAMESERVICE.nn1</name>
         <value>$NAMENODE1:50070</value>
-    </property>
-    <property>
-        <name>dfs.namenode.rpc-address.$HDFS_NAMESERVICE.nn2</name>
-        <value>$NAMENODE2:9000</value>
-    </property>
-    <property>
-        <name>dfs.namenode.http-address.$HDFS_NAMESERVICE.nn2</name>
-        <value>$NAMENODE2:50070</value>
     </property>
     <property>
         <name>dfs.namenode.shared.edits.dir</name>
@@ -120,6 +113,24 @@ cat >$HADOOP_PRFIX/etc/hadoop/hdfs-site.xml <<EOF
         <name>dfs.namenode.datanode.registration.ip-hostname-check</name>
         <value>false</value>
     </property>
+EOF
+
+# namenode 2 config
+if [ $HA_ENABLE == true ];then
+cat >>$HADOOP_PRFIX/etc/hadoop/hdfs-site.xml <<EOF
+    <property>
+        <name>dfs.namenode.rpc-address.$HDFS_NAMESERVICE.nn2</name>
+        <value>$NAMENODE2:9000</value>
+    </property>
+    <property>
+        <name>dfs.namenode.http-address.$HDFS_NAMESERVICE.nn2</name>
+        <value>$NAMENODE2:50070</value>
+    </property>
+EOF
+fi
+
+# end line
+cat >>$HADOOP_PRFIX/etc/hadoop/hdfs-site.xml <<EOF
 </configuration>
 EOF
 
@@ -136,7 +147,7 @@ function check_sync(){
             break
         fi
         count=$(($count+1))
-        sleep 2
+        sleep 5
     done
     $HADOOP_PRFIX/bin/hdfs namenode -bootstrapStandby
 }
@@ -160,9 +171,10 @@ function check_formt(){
 
 # start JournalNode
 if [ "$1"x = "journalnode"x ];then
-    $HADOOP_PRFIX/sbin/hadoop-daemon.sh start journalnode
+    # $HADOOP_PRFIX/sbin/hadoop-daemon.sh start journalnode
+    $HADOOP_PRFIX/bin/hdfs --config $HADOOP_PRFIX/etc/hadoop journalnode
 elif [ "$1"x = "datanode"x ];then
-    $HADOOP_PRFIX/sbin/hadoop-daemon.sh start datanode
+    $HADOOP_PRFIX/bin/hdfs --config $HADOOP_PRFIX/etc/hadoop datanode
 elif [ "$1"x = "namenode"x ];then
     # format zkfc on 01
     if [ $ORD -eq 0 ];then
@@ -171,15 +183,18 @@ elif [ "$1"x = "namenode"x ];then
             $HADOOP_PRFIX/bin/hdfs zkfc -formatZK
             check_formt
         else
-            check_sync $NAMENODE2 9000
+            if [ $HA_ENABLE == true ];then
+               check_sync $NAMENODE2 9000
+            fi
         fi
     fi
     if [ $ORD -eq 1 ];then
         check_sync $NAMENODE1 9000
     fi
-    $HADOOP_PRFIX/sbin/hadoop-daemon.sh start zkfc
-    $HADOOP_PRFIX/sbin/hadoop-daemon.sh start namenode
+    nohup $HADOOP_PRFIX/bin/hdfs --config $HADOOP_PRFIX/etc/hadoop zkfc &
+    $HADOOP_PRFIX/bin/hdfs --config $HADOOP_PRFIX/etc/hadoop namenode
 fi
 
 # TODO: if namenode/datanode down, exit.
-/usr/sbin/sshd -D
+# echo "Port 122" >> /etc/ssh/sshd_config
+# /usr/sbin/sshd -D
